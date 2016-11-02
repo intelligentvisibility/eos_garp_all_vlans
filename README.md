@@ -1,5 +1,6 @@
 Arista EOS GARP all VLAN Script
 ---
+This script has been useful for us in cases where we need to migrate L3 services onto Arista devices from existing networks during migrations.  Hopefully it's useful to others as well!
 
 Use-case example:
 - an existing router or switch holds all L3 default gateways for numerous VLANs
