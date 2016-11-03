@@ -13,7 +13,7 @@ To achieve this:
     - HSRP for example will try to GARP to handle duplicate address situations and can fight the new EOS instance for control
 - Activate all L3 interfaces on the new Arista EOS devices using the existing IP addresses from the old network
 - Run this script to allow the EOS device to begin notifying all hosts of the MAC change for the gateway address
-    - NOTE: If using VARP or virtual-address, this only needs to be run on any one switch which holds the virtual MAC address during the migration.
+    - NOTE: If using VARP or virtual-router, this only needs to be run on any one switch which holds the virtual MAC address during the migration.
 - Verify that hosts are using the new EOS VLAN addresses
 - Shut down the old switch/router VLAN interfaces
 
