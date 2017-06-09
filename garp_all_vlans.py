@@ -2,14 +2,13 @@
 # Copyright (C) 2016 Intelligent Visbility, Inc. - Richard Collins
 # <richardc@intelligentvisibility.com>
 
+import logging
 import netifaces
+import os
 import signal
 import subprocess
 import sys
 import time
-import logging
-import os
-
 
 """
 This script can be run on an Arista EOS switch to cause all SVI interfaces to
@@ -20,16 +19,17 @@ notify all endpoints to use the new Arista default gateway for example.
 
 """
 
-# set the frequency of pings in seconds to send (CTRL-C allows for early
-# termination when desired) (ex: can use .5 for 500ms between garps)
+# set the frequency of pings in seconds to send (CTRL-C allows for early termination when desired)
+# (ex: can use .5 for 500ms between garps)
 ARPING_INTERVAL = 1
-# flag to control output of ARPING to stdout/stderr or send to /dev/null
+# flag to control output of ARPING.  True = stdout/stderr, False = send to /dev/null
 ARPING_OUTPUT = False
 
 # set logging level to desired output
 logger = logging.basicConfig(level=logging.DEBUG)
 
-RUN_FLAG = True # used to by interrupt handlers to signal exit
+RUN_FLAG = True  # used to by interrupt handlers to signal exit
+
 
 def kill_popen_list(popen_list):
     """
@@ -43,8 +43,7 @@ def kill_popen_list(popen_list):
 
 def signal_handler(signal, frame):
     """
-    register a signal handler to catch SIGINT and kill all the child arping
-    processe
+    register a signal handler to catch SIGINT and kill all the child arping processes
     """
     print('CTRL-C was pressed!\n\nKilling child processes...')
     global RUN_FLAG
@@ -62,7 +61,7 @@ another batch of arping processes.  If it hangs, we do not do the next round
 of pings.  This errs ensures the process fails closed vs open."""
 process_list = []
 
-# send at requested intervals and wait for CTRL-C to interrupt
+# main run loop; send at requested intervals and wait for CTRL-C to interrupt
 while RUN_FLAG:
     start_time = time.time()
     logging.debug("Starting new ARPING for all VLAN interfaces")
@@ -71,22 +70,24 @@ while RUN_FLAG:
     # build a list of tuples as (interface, ipaddress) to be used for calling arping on
     # all vlan interfaces
     target_list = [(interface, netifaces.ifaddresses(interface)[2][0]['addr']) for interface in interface_list if
-                str(interface)[:4].lower() == 'vlan']
-
+                   str(interface)[:4].lower() == 'vlan']
     # kick off a ping on each interface and store the list of processes
     process_count = 0
     if not ARPING_OUTPUT:
         with open(os.devnull, 'w') as dev_null:
             for target_network in target_list:
-                process_list.append(subprocess.Popen(['/sbin/arping', '-A', '-c', '1', '-I', str(target_network[0]), str(target_network[1])], stdout=dev_null, stderr=subprocess.STDOUT))
+                process_list.append(subprocess.Popen(
+                    ['/sbin/arping', '-A', '-c', '1', '-I', str(target_network[0]), str(target_network[1])],
+                    stdout=dev_null, stderr=subprocess.STDOUT))
                 process_count += 1
     else:
         for target_network in target_list:
-            process_list.append(subprocess.Popen(['/sbin/arping', '-A', '-c', '1', '-I', str(target_network[0]), str(target_network[1])]))
+            process_list.append(subprocess.Popen(
+                ['/sbin/arping', '-A', '-c', '1', '-I', str(target_network[0]), str(target_network[1])]))
             process_count += 1
     logging.debug("Started {} arping processes for {} interfaces.".format(process_count, len(target_list)))
 
-    # ensure that all the processes have exited
+    # ensure that all the processes have exited before continuing
     while len(process_list):
         for process in process_list:
             if process.poll() is not None:
