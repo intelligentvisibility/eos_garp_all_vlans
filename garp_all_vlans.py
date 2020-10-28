@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding=utf-8
 # Copyright (C) 2016 Intelligent Visbility, Inc. - Richard Collins
 # <richardc@intelligentvisibility.com>
@@ -72,9 +73,18 @@ while RUN_FLAG:
     # build a list of tuples as (interface, ipaddress) to be used for calling
     #  arping on
     # all vlan interfaces
-    target_list = [(interface, netifaces.ifaddresses(interface)[2][0]['addr'])
-                   for interface in interface_list if
-                   str(interface)[:4].lower() == 'vlan']
+    #
+    # JG/Archjeb Change because an exception can be thrown here if 
+    # EVPN VRF exists because of tunneled VNI. Its best to just skip those interfaces
+    # because they are not host facing anyway...
+    target_list = []
+    for interface in interface_list:
+        if str(interface)[:4].lower() == 'vlan':
+            # Because of potential exception with EVPN vrf vni, python EAFP 
+            try:
+                target_list.append((interface, netifaces.ifaddresses(interface)[2][0]['addr']))
+            except:
+                print ("Got an EVPN VRF VNI, skipping")
     # kick off a ping on each interface and store the list of processes
     process_count = 0
     if not ARPING_OUTPUT:
