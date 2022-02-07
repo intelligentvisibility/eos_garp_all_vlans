@@ -29,7 +29,7 @@ ARPING_OUTPUT = False
 # set logging level to desired output
 logger = logging.basicConfig(level=logging.DEBUG)
 
-RUN_FLAG = True  # used to by interrupt handlers to signal exit
+RUN_FLAG = True  # used by interrupt handlers to signal exit
 
 
 def kill_popen_list(popen_list):
@@ -60,7 +60,7 @@ we do not want to create an infinite # of arping processes on the switch and
 impact production while running in our infinite loop.  So, we will track each
 PID in a list, and verify the PID has terminated for all vlans before running
 another batch of arping processes.  If it hangs, we do not do the next round
-of pings.  This errs ensures the process fails closed vs open."""
+of pings.  This ensures the process fails closed vs open."""
 process_list = []
 
 # main run loop; send at requested intervals and wait for CTRL-C to interrupt
@@ -70,26 +70,32 @@ while RUN_FLAG:
     # pull a list of all interfaces on the switch
     interface_list = netifaces.interfaces()
     # build a list of tuples as (interface, ipaddress) to be used for calling
-    #  arping on
-    # all vlan interfaces
-    target_list = [(interface, netifaces.ifaddresses(interface)[2][0]['addr'])
-                   for interface in interface_list if
-                   str(interface)[:4].lower() == 'vlan']
+    # arping on all vlan interfaces with IPv4 addresses configured on them
+    target_list = []
+    for interface in interface_list:
+        if_addresses = netifaces.ifaddresses(interface)
+        if netifaces.AF_INET in if_addresses.keys() and \
+                str(interface)[:4].lower() == 'vlan':
+            ifadddr = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+            target_list.append((interface, ifaddr))
+        else:
+            logger.debug('Skipping interface {} with addresses {}'.format(
+                    interface, if_addresses))
     # kick off a ping on each interface and store the list of processes
     process_count = 0
     if not ARPING_OUTPUT:
         with open(os.devnull, 'w') as dev_null:
             for target_network in target_list:
                 process_list.append(subprocess.Popen(
-                    ['/sbin/arping', '-A', '-c', '1', '-I',
-                     str(target_network[0]), str(target_network[1])],
-                    stdout=dev_null, stderr=subprocess.STDOUT))
+                        ['/sbin/arping', '-A', '-c', '1', '-I',
+                            str(target_network[0]), str(target_network[1])],
+                        stdout=dev_null, stderr=subprocess.STDOUT))
                 process_count += 1
     else:
         for target_network in target_list:
             process_list.append(subprocess.Popen(
-                ['/sbin/arping', '-A', '-c', '1', '-I', str(target_network[0]),
-                 str(target_network[1])]))
+                    ['/sbin/arping', '-A', '-c', '1', '-I', str(target_network[0]),
+                        str(target_network[1])]))
             process_count += 1
     logging.debug("Started {} arping processes for "
                   "{} interfaces.".format(process_count, len(target_list)))
