@@ -66,7 +66,7 @@ process_list = []
 # main run loop; send at requested intervals and wait for CTRL-C to interrupt
 while RUN_FLAG:
     start_time = time.time()
-    logging.debug("Starting new ARPING for all VLAN interfaces")
+    logging.info("Starting new ARPING for all VLAN interfaces")
     # pull a list of all interfaces on the switch
     interface_list = netifaces.interfaces()
     # build a list of tuples as (interface, ipaddress) to be used for calling
@@ -76,10 +76,10 @@ while RUN_FLAG:
         if_addresses = netifaces.ifaddresses(interface)
         if netifaces.AF_INET in if_addresses.keys() and \
                 str(interface)[:4].lower() == 'vlan':
-            ifadddr = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+            ifaddr = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
             target_list.append((interface, ifaddr))
         else:
-            logger.debug('Skipping interface {} with addresses {}'.format(
+            logging.debug('Skipping interface {} with addresses {}'.format(
                     interface, if_addresses))
     # kick off a ping on each interface and store the list of processes
     process_count = 0
@@ -97,8 +97,8 @@ while RUN_FLAG:
                     ['/sbin/arping', '-A', '-c', '1', '-I', str(target_network[0]),
                         str(target_network[1])]))
             process_count += 1
-    logging.debug("Started {} arping processes for "
-                  "{} interfaces.".format(process_count, len(target_list)))
+    logging.info("Started {} arping processes for "
+                 "{} interfaces.".format(process_count, len(target_list)))
 
     # ensure that all the processes have exited before continuing
     while len(process_list):
